@@ -1,0 +1,74 @@
+@startuml
+
+class Order {
+  + number
+  + date
+  + owner
+  + items: []
+  + {static} create()
+  + {static} delete()
+  + add_ware()
+  + del_ware()
+  + total_sum()
+  + total_quant()
+  + total_volume()
+  + totla_weight()
+}
+
+class OrderItems {
+  + order
+  + ware
+  + price
+  + quant
+  + cost()
+  + get_volume_row()
+  + get_weight_row()
+}
+
+class Ware {
+  + article
+  + name
+  + price
+}
+
+class Customer {
+  + username
+}
+
+class Response {
+  + status
+  + text
+}
+
+class MainBot {
+  + unic_key
+  + customer
+  + auth()
+  - _check_user()
+  - _check_password()
+  + send_to_client()
+  + create_order()
+  + cancel_oder()
+  + accept_order()
+}
+
+class Repository {
+  + db_name
+  + host
+  + port
+  + somethings
+  .. Getters ..
+  + get_ware_list()
+  + get_user_by_name()
+  .. Senders ..
+  + send_order()
+}
+
+Order "1" *-- "1..*" OrderItems : "Содержит"
+Order -right- Customer
+MainBot -- Customer
+MainBot --> Order
+MainBot o-left- Repository
+MainBot o-right- Response
+OrderItems -- Ware
+@enduml
