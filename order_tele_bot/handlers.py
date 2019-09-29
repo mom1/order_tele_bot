@@ -2,7 +2,7 @@
 # @Author: maxst
 # @Date:   2019-09-26 21:23:03
 # @Last Modified by:   MaxST
-# @Last Modified time: 2019-09-29 15:29:27
+# @Last Modified time: 2019-09-29 15:32:08
 import logging
 from abc import ABC, abstractmethod
 
@@ -97,8 +97,7 @@ class ChooseGoods(AbsCommand):
 
     def update(self, *args, msg=None, hand=None, **kwargs):
         hand.send_msg(msg, 'Каталог категорий товара', reply_markup=hand.keybords.remove_menu())
-        mark = hand.keybords.list_kb_menu(menu_items=hand.update_from_category())
-        hand.send_msg(msg, 'Сделайте свой выбор', reply_markup=mark)
+        hand.send_msg(msg, 'Сделайте свой выбор', reply_markup=hand.keybords.list_kb_menu(menu_items=hand.update_from_category()))
 
 
 class InfoBot(AbsCommand):
