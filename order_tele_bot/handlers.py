@@ -2,7 +2,7 @@
 # @Author: maxst
 # @Date:   2019-09-26 21:23:03
 # @Last Modified by:   MaxST
-# @Last Modified time: 2019-09-29 15:32:08
+# @Last Modified time: 2019-09-30 09:41:24
 import logging
 from abc import ABC, abstractmethod
 
@@ -39,10 +39,11 @@ class Handler:
 
     def update_from_category(self):
         events = []
+        cat_cmd = CaregoryCommand()
         for cat in Category.all():
             event = f'{cat}'
             if not self.check_event(event):
-                router.reg_command(Caregory.clone(name=event))
+                router.reg_command(cat_cmd, event)
             events.append(event)
         return events
 
@@ -120,7 +121,7 @@ class SettingsBot(AbsCommand):
         hand.send_msg(msg, f'На данный момент я не настраиваюсь.', reply_markup=hand.keybords.kb_menu(self.menu))
 
 
-class Caregory(AbsCommand):
+class CaregoryCommand(AbsCommand):
     name = 'Категория'
 
     def update(self, *args, msg=None, hand=None, **kwargs):
