@@ -2,7 +2,7 @@
 # @Author: maxst
 # @Date:   2019-09-26 21:23:03
 # @Last Modified by:   MaxST
-# @Last Modified time: 2019-09-30 09:41:24
+# @Last Modified time: 2019-10-03 21:48:19
 import logging
 from abc import ABC, abstractmethod
 
@@ -21,7 +21,7 @@ class Handler:
         self.bot = bot
         self.keybords = Keyboards()
         self._observers = {}
-        self.router = router.init(self)
+        router.source = self
 
     def run_handlers(self):
         @self.bot.message_handler(func=lambda message: True)
@@ -49,10 +49,9 @@ class Handler:
 
     def notify(self, event, *args, **kwargs):
         logger.info(f'Свершилось событие {event}')
-        obs = self._observers.get(event, []) or []
         kwargs['event'] = event
         kwargs['hand'] = self
-        for observer in obs:
+        for observer in (self._observers.get(event, []) or []):
             observer.update(*args, **kwargs)
 
     def attach(self, observer, event):
