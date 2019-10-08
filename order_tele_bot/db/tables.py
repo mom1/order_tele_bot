@@ -2,8 +2,9 @@
 # @Author: maxst
 # @Date:   2019-09-28 16:54:27
 # @Last Modified by:   MaxST
-# @Last Modified time: 2019-10-03 20:05:48
+# @Last Modified time: 2019-10-07 19:34:04
 import sqlalchemy as sa
+from emoji import emojize as _
 from sqlalchemy.orm import backref, relationship
 
 from .core import Core
@@ -28,6 +29,7 @@ class Ware(FindByField, Core):
 class Category(FindByField, Core):
     id = sa.Column(sa.Integer, sa.ForeignKey(Core.id, ondelete='CASCADE'), primary_key=True)  # noqa
     title = sa.Column(sa.String(30), unique=True, nullable=False)
+    emoji = sa.Column(sa.String(255))
 
     def __str__(self):
-        return f'{self.title}'
+        return f'{_(self.emoji)} {self.title}'

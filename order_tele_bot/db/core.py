@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 # @Author: maxst
 # @Date:   2019-09-26 20:14:23
-# @Last Modified by:   maxst
-# @Last Modified time: 2019-09-28 17:45:49
+# @Last Modified by:   MaxST
+# @Last Modified time: 2019-10-07 19:33:09
 import logging
 import threading
 
-from dynaconf import settings
-
 import sqlalchemy as sa
+from dynaconf import settings
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.declarative.api import as_declarative
@@ -74,7 +73,11 @@ class DBManager(object):
         from .tables import Ware, Category
         if len(Ware.all()) == 0:
             Category.delete_all()
-            cats = [Category.create(title=title) for title in ('Полуфабрикаты', 'Баккалея', 'Мороженное')]
+            cats = [Category.create(title=title, emoji=emoji) for title, emoji in (
+                ('Полуфабрикаты', ':pizza:'),
+                ('Баккалея', ':bread:'),
+                ('Мороженное', ':shaved_ice:'),
+            )]
 
             for i, cat in enumerate(cats):
                 Ware.create(title=f'Товар1_{i}', quantity=10, price=100, active=True, caregory=cat)

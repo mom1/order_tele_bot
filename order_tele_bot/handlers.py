@@ -2,18 +2,21 @@
 # @Author: maxst
 # @Date:   2019-09-26 21:23:03
 # @Last Modified by:   MaxST
-# @Last Modified time: 2019-10-03 21:48:19
+# @Last Modified time: 2019-10-08 10:04:36
 import logging
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
 from dynaconf import settings
+from emoji import emojize as _
 from telebot import logger
 
-from db import Category
+from db import Category, Ware
 from markup import Keyboards
+from metaclasses import RegistryHolder
 from router import router
 
 logger.setLevel(logging.INFO)
+nav_menu = [_('<< НАЗАД'), _(':heavy_check_mark: ЗАКАЗ')]
 
 
 class Handler:
@@ -30,12 +33,16 @@ class Handler:
 
         @self.bot.callback_query_handler(func=lambda call: True)
         def callback_worker(call):
-            self.bot.send_message(call.message.chat.id, call.data)
+            self.notify('order', msg=call, data=call.data)
 
         self.update_from_category()
 
     def send_msg(self, msg, *args, **kwargs):
         self.bot.send_message(msg.chat.id, *args, **kwargs)
+
+    def send_cb(self, call, *args, **kwargs):
+        kwargs['show_alert'] = True
+        self.bot.answer_callback_query(call.id, *args, **kwargs)
 
     def update_from_category(self):
         events = []
@@ -45,6 +52,7 @@ class Handler:
             if not self.check_event(event):
                 router.reg_command(cat_cmd, event)
             events.append(event)
+        events.append(nav_menu)
         return events
 
     def notify(self, event, *args, **kwargs):
@@ -70,7 +78,9 @@ class Handler:
         return name in self._observers
 
 
-class AbsCommand(ABC):
+class AbsCommand(metaclass=RegistryHolder):
+    abstract = True
+
     @abstractmethod
     def update(self, *args, msg=None, hand=None, **kwargs):
         pass
@@ -92,7 +102,7 @@ class StartCommand(AbsCommand):
 
 
 class ChooseGoods(AbsCommand):
-    name = '📚 Выбрать товар'
+    name = _(':open_file_folder: Выбрать товар')
     menu = 'start'
 
     def update(self, *args, msg=None, hand=None, **kwargs):
@@ -101,7 +111,7 @@ class ChooseGoods(AbsCommand):
 
 
 class InfoBot(AbsCommand):
-    name = 'ℹ имя вашего бота'
+    name = _(':speech_balloon: имя вашего бота')
     menu = 'start'
 
     def update(self, *args, msg=None, hand=None, **kwargs):
@@ -113,7 +123,7 @@ class InfoBot(AbsCommand):
 
 
 class SettingsBot(AbsCommand):
-    name = '⚙ Настройки'
+    name = _(':globe_with_meridians: Настройки')
     menu = 'start'
 
     def update(self, *args, msg=None, hand=None, **kwargs):
@@ -122,6 +132,7 @@ class SettingsBot(AbsCommand):
 
 class CaregoryCommand(AbsCommand):
     name = 'Категория'
+    abstract = True
 
     def update(self, *args, msg=None, hand=None, **kwargs):
         cat = Category.find_by(msg.text)
@@ -132,5 +143,25 @@ class CaregoryCommand(AbsCommand):
         hand.send_msg(msg, 'Ok', reply_markup=hand.keybords.list_kb_menu(menu_items=hand.update_from_category()))
 
 
-for cl in (StartCommand, ChooseGoods, InfoBot, SettingsBot):
-    router.reg_command(cl)
+class OrderCallBack(AbsCommand):
+    name = 'order'
+    product_order = """
+    Выбранный товар:
+
+    {}
+    Cтоимость: {:.2f} руб
+
+    добавлен в заказ!!!
+
+    На складе осталось {:.2f} ед.
+    """.format
+
+    def update(self, *args, msg=None, hand=None, data=None, **kwargs):
+        ware = Ware.get(data)
+        if not ware:
+            logger.error(f'Товар {data} не найден')
+            return
+        hand.send_cb(msg, self.product_order(ware.title, ware.price, ware.quantity))
+
+
+router.reg_command(StartCommand, '<< НАЗАД')
