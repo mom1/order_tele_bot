@@ -2,7 +2,7 @@
 # @Author: maxst
 # @Date:   2019-09-28 16:54:27
 # @Last Modified by:   MaxST
-# @Last Modified time: 2019-10-07 19:34:04
+# @Last Modified time: 2019-10-10 21:53:37
 import sqlalchemy as sa
 from emoji import emojize as _
 from sqlalchemy.orm import backref, relationship
@@ -33,3 +33,15 @@ class Category(FindByField, Core):
 
     def __str__(self):
         return f'{_(self.emoji)} {self.title}'
+
+
+class Order(Core):
+    id = sa.Column(sa.Integer, sa.ForeignKey(Core.id, ondelete='CASCADE'), primary_key=True)  # noqa
+    number = sa.Column(sa.String(255))
+    data = sa.Column(sa.DateTime, default=sa.func.now())
+    # user_id = sa.Column(sa.ForeignKey('user.id', ondelete='CASCADE'))
+    # total_quant = sa.Column(sa.Integer())
+    # total_summ = sa.Column(sa.Integer())
+
+    # def __str__(self):
+    #     return f'{self.number} от {self.data} Кол-во: {self.total_quant:.2f} Стоимость: {self.total_summ:.2f}'

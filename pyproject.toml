@@ -13,7 +13,8 @@ emoji = "^0.5.4"
 
 [tool.poetry.dev-dependencies]
 ipdb = "^0.12.2"
-jedi = "<0.15,>=0.14.1"
+jedi = "^0.15"
+yapf = "^0.28.0"
 
 [build-system]
 requires = ["poetry>=0.12"]

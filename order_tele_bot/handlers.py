@@ -2,7 +2,7 @@
 # @Author: maxst
 # @Date:   2019-09-26 21:23:03
 # @Last Modified by:   MaxST
-# @Last Modified time: 2019-10-08 10:04:36
+# @Last Modified time: 2019-10-10 21:42:37
 import logging
 from abc import abstractmethod
 
@@ -16,7 +16,24 @@ from metaclasses import RegistryHolder
 from router import router
 
 logger.setLevel(logging.INFO)
-nav_menu = [_('<< НАЗАД'), _(':heavy_check_mark: ЗАКАЗ')]
+main_menu = [_(':open_file_folder: Выбрать товар'), [_(':speech_balloon: имя вашего бота'), _(':gear: Настройки')]]
+nav_menu = [_(':left_arrow: НАЗАД'), _(':heavy_check_mark: ЗАКАЗ')]
+order_menu = [
+    [_('❌'), _(':down_arrow:'), 0, _(':up_arrow:')],
+    [nav_menu[0], 0, _(':right_arrow:')],
+    _(':heavy_check_mark: Оформить заказ'),
+]
+
+order_info = """
+    Выбранный товар:
+
+    {}
+    Cтоимость: {:.2f} руб
+
+    добавлен в заказ!!!
+
+    На складе осталось {:.2f} ед.
+    """.format
 
 
 class Handler:
@@ -36,6 +53,10 @@ class Handler:
             self.notify('order', msg=call, data=call.data)
 
         self.update_from_category()
+        for item_menu in main_menu:
+            self.keybords.reg('start', item_menu)
+        for item_menu in order_menu:
+            self.keybords.reg('order', item_menu)
 
     def send_msg(self, msg, *args, **kwargs):
         self.bot.send_message(msg.chat.id, *args, **kwargs)
@@ -102,8 +123,7 @@ class StartCommand(AbsCommand):
 
 
 class ChooseGoods(AbsCommand):
-    name = _(':open_file_folder: Выбрать товар')
-    menu = 'start'
+    name = main_menu[0]
 
     def update(self, *args, msg=None, hand=None, **kwargs):
         hand.send_msg(msg, 'Каталог категорий товара', reply_markup=hand.keybords.remove_menu())
@@ -111,23 +131,21 @@ class ChooseGoods(AbsCommand):
 
 
 class InfoBot(AbsCommand):
-    name = _(':speech_balloon: имя вашего бота')
-    menu = 'start'
+    name = main_menu[1][0]
 
     def update(self, *args, msg=None, hand=None, **kwargs):
         hand.send_msg(
             msg,
             f'Меня зовут {settings.NAME_BOT}!\nПриятно познакомится :)\nЧем займемся?',
-            reply_markup=hand.keybords.kb_menu(self.menu),
+            reply_markup=hand.keybords.kb_menu('start'),
         )
 
 
 class SettingsBot(AbsCommand):
-    name = _(':globe_with_meridians: Настройки')
-    menu = 'start'
+    name = main_menu[1][1]
 
     def update(self, *args, msg=None, hand=None, **kwargs):
-        hand.send_msg(msg, f'На данный момент я не настраиваюсь.', reply_markup=hand.keybords.kb_menu(self.menu))
+        hand.send_msg(msg, f'На данный момент я не настраиваюсь.', reply_markup=hand.keybords.kb_menu('start'))
 
 
 class CaregoryCommand(AbsCommand):
@@ -145,23 +163,22 @@ class CaregoryCommand(AbsCommand):
 
 class OrderCallBack(AbsCommand):
     name = 'order'
-    product_order = """
-    Выбранный товар:
-
-    {}
-    Cтоимость: {:.2f} руб
-
-    добавлен в заказ!!!
-
-    На складе осталось {:.2f} ед.
-    """.format
 
     def update(self, *args, msg=None, hand=None, data=None, **kwargs):
         ware = Ware.get(data)
         if not ware:
             logger.error(f'Товар {data} не найден')
             return
-        hand.send_cb(msg, self.product_order(ware.title, ware.price, ware.quantity))
+        hand.send_cb(msg, order_info(ware.title, ware.price, ware.quantity))
 
 
-router.reg_command(StartCommand, '<< НАЗАД')
+class Order(AbsCommand):
+    name = nav_menu[1]
+
+    def update(self, *args, msg=None, hand=None, **kwargs):
+        ware = Ware.first()
+        hand.send_msg(msg, f'Ваш заказ')
+        hand.send_msg(msg, order_info(ware.title, ware.price, ware.quantity), reply_markup=hand.keybords.kb_menu('order'))
+
+
+router.reg_command(StartCommand, nav_menu[0])
