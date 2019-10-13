@@ -2,7 +2,7 @@
 # @Author: maxst
 # @Date:   2019-09-26 19:27:23
 # @Last Modified by:   MaxST
-# @Last Modified time: 2019-10-14 01:35:48
+# @Last Modified time: 2019-10-14 01:38:41
 from pathlib import Path
 
 from emoji import emojize as _
@@ -37,7 +37,6 @@ NAV_MENU = [BACK_ITEM, ORDER_ITEM]
 ORDER_MENU = [
     [BACK_TO_CAT_ITEM, ORDER_ITEM, CROSS_ITEM],
     ORDER_APPLY_ITEM,
-    # [LEFT_ITEM, 0, RIGHT_ITEM],
 ]
 
 # Messages
