@@ -2,38 +2,19 @@
 # @Author: maxst
 # @Date:   2019-09-26 21:23:03
 # @Last Modified by:   MaxST
-# @Last Modified time: 2019-10-10 21:42:37
+# @Last Modified time: 2019-10-14 01:35:37
 import logging
 from abc import abstractmethod
 
 from dynaconf import settings
-from emoji import emojize as _
 from telebot import logger
 
-from db import Category, Ware
+from db import Category, Order, OrderItems, StateOrder, Ware
 from markup import Keyboards
 from metaclasses import RegistryHolder
 from router import router
 
 logger.setLevel(logging.INFO)
-main_menu = [_(':open_file_folder: Выбрать товар'), [_(':speech_balloon: имя вашего бота'), _(':gear: Настройки')]]
-nav_menu = [_(':left_arrow: НАЗАД'), _(':heavy_check_mark: ЗАКАЗ')]
-order_menu = [
-    [_('❌'), _(':down_arrow:'), 0, _(':up_arrow:')],
-    [nav_menu[0], 0, _(':right_arrow:')],
-    _(':heavy_check_mark: Оформить заказ'),
-]
-
-order_info = """
-    Выбранный товар:
-
-    {}
-    Cтоимость: {:.2f} руб
-
-    добавлен в заказ!!!
-
-    На складе осталось {:.2f} ед.
-    """.format
 
 
 class Handler:
@@ -50,30 +31,37 @@ class Handler:
 
         @self.bot.callback_query_handler(func=lambda call: True)
         def callback_worker(call):
-            self.notify('order', msg=call, data=call.data)
+            prefix, splitter, data = call.data.partition(':')
+            self.notify(prefix, msg=call, data=data)
 
         self.update_from_category()
-        for item_menu in main_menu:
+        for item_menu in settings.MAIN_MENU:
             self.keybords.reg('start', item_menu)
-        for item_menu in order_menu:
+        for item_menu in settings.ORDER_MENU:
             self.keybords.reg('order', item_menu)
 
     def send_msg(self, msg, *args, **kwargs):
         self.bot.send_message(msg.chat.id, *args, **kwargs)
 
     def send_cb(self, call, *args, **kwargs):
-        kwargs['show_alert'] = True
+        kwargs.setdefault('show_alert', True)
         self.bot.answer_callback_query(call.id, *args, **kwargs)
+
+    def edit_msg_markup(self, msg, *args, **kwargs):
+        self.bot.edit_message_reply_markup(msg.chat.id, *args, message_id=msg.message_id, **kwargs)
+
+    def edit_msg_text(self, msg, text, *args, **kwargs):
+        self.bot.edit_message_text(text, msg.chat.id, *args, message_id=msg.message_id, **kwargs)
 
     def update_from_category(self):
         events = []
         cat_cmd = CaregoryCommand()
         for cat in Category.all():
-            event = f'{cat}'
+            event = str(cat)
+            events.append(event)
             if not self.check_event(event):
                 router.reg_command(cat_cmd, event)
-            events.append(event)
-        events.append(nav_menu)
+        events.append(settings.NAV_MENU)
         return events
 
     def notify(self, event, *args, **kwargs):
@@ -123,7 +111,7 @@ class StartCommand(AbsCommand):
 
 
 class ChooseGoods(AbsCommand):
-    name = main_menu[0]
+    name = settings.CHOOSE_WARE_ITEM
 
     def update(self, *args, msg=None, hand=None, **kwargs):
         hand.send_msg(msg, 'Каталог категорий товара', reply_markup=hand.keybords.remove_menu())
@@ -131,21 +119,22 @@ class ChooseGoods(AbsCommand):
 
 
 class InfoBot(AbsCommand):
-    name = main_menu[1][0]
+    name = settings.NAME_BOT_ITEM
 
     def update(self, *args, msg=None, hand=None, **kwargs):
         hand.send_msg(
             msg,
-            f'Меня зовут {settings.NAME_BOT}!\nПриятно познакомится :)\nЧем займемся?',
+            settings.APP_INFO,
+            parse_mode='HTML',
             reply_markup=hand.keybords.kb_menu('start'),
         )
 
 
 class SettingsBot(AbsCommand):
-    name = main_menu[1][1]
+    name = settings.SETTINGS_ITEM
 
     def update(self, *args, msg=None, hand=None, **kwargs):
-        hand.send_msg(msg, f'На данный момент я не настраиваюсь.', reply_markup=hand.keybords.kb_menu('start'))
+        hand.send_msg(msg, settings.APP_SETTINGS, parse_mode='HTML', reply_markup=hand.keybords.kb_menu('start'))
 
 
 class CaregoryCommand(AbsCommand):
@@ -161,24 +150,150 @@ class CaregoryCommand(AbsCommand):
         hand.send_msg(msg, 'Ok', reply_markup=hand.keybords.list_kb_menu(menu_items=hand.update_from_category()))
 
 
-class OrderCallBack(AbsCommand):
-    name = 'order'
+class AddWareCallBack(AbsCommand):
+    name = Ware.short_prefix
 
     def update(self, *args, msg=None, hand=None, data=None, **kwargs):
+        order = Order.filter_by(user_id=msg.from_user.id, state=StateOrder.not_send).first()
+        if not order:
+            order = Order.create(user_id=msg.from_user.id, number=str(msg.message.message_id))
         ware = Ware.get(data)
         if not ware:
             logger.error(f'Товар {data} не найден')
             return
-        hand.send_cb(msg, order_info(ware.title, ware.price, ware.quantity))
+        try:
+            order_item = order.add_item(ware)
+        except Exception as e:
+            hand.send_cb(msg, str(e), show_alert=False)
+            return
+        self.answer(*args, msg=msg, hand=hand, ware=ware, order=order, order_item=order_item, **kwargs)
+
+    def answer(self, msg, hand, ware, order, *args, **kwargs):
+        hand.edit_msg_markup(msg.message, reply_markup=hand.keybords.in_line_kb_menu(menu_items=ware.caregory.wares))
+        hand.send_cb(msg, f'{order}\n\nТовар {ware.title} добавлен')
 
 
-class Order(AbsCommand):
-    name = nav_menu[1]
+class AddOrdeItemsCallBack(AddWareCallBack):
+    name = f'{OrderItems.short_prefix}_{Ware.short_prefix}'
+
+    def answer(self, msg, hand, order, *args, order_item=None, **kwargs):
+        hand.send_cb(msg, f'Товар {order_item.ware.title} добавлен', show_alert=False)
+        hand.edit_msg_text(
+            msg.message,
+            f'{order_item}\nНа складе: {order_item.ware.quantity}',
+            reply_markup=hand.keybords.in_line_kb_menu(menu_items=[[
+                order_item.make_inline_add(),
+                order_item.make_inline_down_quant(),
+                order_item.make_inline_del(),
+            ]]),
+        )
+
+
+class EditOrderItemCallBack(AbsCommand):
+    name = OrderItems.short_prefix
+
+    def update(self, *args, msg=None, hand=None, data=None, **kwargs):
+        try:
+            order_item = OrderItems.get(data)
+        except Exception:
+            return
+        hand.send_cb(msg, 'Edit', show_alert=False)
+        hand.send_msg(msg.message,
+                      f'{order_item}\nНа складе: {order_item.ware.quantity}',
+                      reply_markup=hand.keybords.in_line_kb_menu(menu_items=[[
+                          order_item.make_inline_add(),
+                          order_item.make_inline_down_quant(),
+                          order_item.make_inline_del(),
+                      ]]))
+
+
+class DelOrderItemCallBack(AbsCommand):
+    name = 'del_' + OrderItems.short_prefix
+
+    def update(self, *args, msg=None, hand=None, data=None, **kwargs):
+        try:
+            order_item = OrderItems.get(data)
+        except Exception:
+            return
+
+        order = order_item.order
+        order_item.delete()
+
+        hand.send_cb(msg, 'Deleted', show_alert=False)
+        hand.send_msg(msg.message, order.for_msg(), parse_mode='HTML', reply_markup=hand.keybords.in_line_kb_menu(menu_items=order.make_inline_menu()))
+
+
+class DownOrderItemCallBack(AbsCommand):
+    name = 'down_' + OrderItems.short_prefix
+
+    def update(self, *args, msg=None, hand=None, data=None, **kwargs):
+        try:
+            order_item = OrderItems.get(data)
+        except Exception:
+            return
+
+        new_quant = order_item.quantity - 1
+        try:
+            assert new_quant >= 0, 'Больше уменьшить нельзя'
+            order_item.quantity = new_quant
+            order_item.save()
+        except Exception as e:
+            hand.send_cb(msg, str(e), show_alert=False)
+            return
+
+        hand.send_cb(msg, 'Edited', show_alert=False)
+        hand.edit_msg_text(
+            msg.message,
+            f'{order_item}\nНа складе: {order_item.ware.quantity}',
+            reply_markup=hand.keybords.in_line_kb_menu(menu_items=[[
+                order_item.make_inline_add(),
+                order_item.make_inline_down_quant(),
+                order_item.make_inline_del(),
+            ]]),
+        )
+
+
+class OrderCommand(AbsCommand):
+    name = settings.ORDER_ITEM
 
     def update(self, *args, msg=None, hand=None, **kwargs):
-        ware = Ware.first()
-        hand.send_msg(msg, f'Ваш заказ')
-        hand.send_msg(msg, order_info(ware.title, ware.price, ware.quantity), reply_markup=hand.keybords.kb_menu('order'))
+        msg_text = 'Нет открытых заказов'
+        order = Order.filter_by(user_id=msg.from_user.id, state=StateOrder.not_send).first()
+        if order:
+            msg_text = order.for_msg()
+            hand.send_msg(msg, 'Ваш заказ', reply_markup=hand.keybords.kb_menu('order'))
+            hand.send_msg(msg, msg_text, parse_mode='HTML', reply_markup=hand.keybords.in_line_kb_menu(menu_items=order.make_inline_menu()))
+        else:
+            hand.send_msg(msg, msg_text)
 
 
-router.reg_command(StartCommand, nav_menu[0])
+class OrderApplyCommand(AbsCommand):
+    name = settings.ORDER_APPLY_ITEM
+
+    def update(self, *args, msg=None, hand=None, **kwargs):
+        msg_text = 'Нет открытых заказов'
+        order = Order.filter_by(user_id=msg.from_user.id, state=StateOrder.not_send).first()
+        if order:
+            msg_text = order.for_msg() + settings.BOTTOM_ORDER_APPLY
+            order.state = StateOrder.sended
+            order.save()
+            hand.send_msg(msg, msg_text, parse_mode='HTML', reply_markup=hand.keybords.kb_menu('order'))
+        else:
+            hand.send_msg(msg, msg_text)
+
+
+class OrderDelCommand(AbsCommand):
+    name = settings.CROSS_ITEM
+
+    def update(self, *args, msg=None, hand=None, **kwargs):
+        msg_text = 'Нет открытых заказов'
+        order = Order.filter_by(user_id=msg.from_user.id, state=StateOrder.not_send).first()
+        if order:
+            order.delete()
+            hand.send_msg(msg, 'Заказ удален', reply_markup=hand.keybords.kb_menu('start'))
+        else:
+            hand.send_msg(msg, msg_text, reply_markup=hand.keybords.kb_menu('start'))
+
+
+router.reg_command(StartCommand, settings.BACK_ITEM)
+router.reg_command(ChooseGoods, settings.BACK_TO_CAT_ITEM)

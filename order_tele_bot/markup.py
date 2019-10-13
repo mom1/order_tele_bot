@@ -2,7 +2,7 @@
 # @Author: maxst
 # @Date:   2019-09-26 21:27:45
 # @Last Modified by:   MaxST
-# @Last Modified time: 2019-10-08 09:59:16
+# @Last Modified time: 2019-10-13 22:46:47
 from telebot.types import (
     InlineKeyboardButton, InlineKeyboardMarkup,
     KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove,
@@ -28,7 +28,11 @@ class Keyboards:
 
     def set_inline_btn(self, item):
         kwargs = {}
-        if hasattr(item, 'id'):
+        if isinstance(item, dict):
+            return InlineKeyboardButton(**item)
+        elif hasattr(item, 'callback_data'):
+            kwargs['callback_data'] = item.callback_data()
+        elif hasattr(item, 'id'):
             kwargs['callback_data'] = str(item.id)
         return InlineKeyboardButton(str(item), **kwargs)
 

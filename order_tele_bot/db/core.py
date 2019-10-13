@@ -2,7 +2,7 @@
 # @Author: maxst
 # @Date:   2019-09-26 20:14:23
 # @Last Modified by:   MaxST
-# @Last Modified time: 2019-10-07 19:33:09
+# @Last Modified time: 2019-10-13 16:45:06
 import logging
 import threading
 
@@ -132,7 +132,7 @@ class Core(Base):
     created = sa.Column(sa.DateTime, default=sa.func.now())
     updated = sa.Column(sa.DateTime, default=sa.func.now(), onupdate=sa.func.now())
     active = sa.Column(sa.Boolean, default=False)
-    sort = sa.Column(sa.Integer, default=0)
+    sort = sa.Column(sa.Integer, default=0, autoincrement=True)
 
     @declared_attr
     def __mapper_args__(cls):  # noqa

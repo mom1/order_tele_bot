@@ -319,6 +319,17 @@ pymysql = ["pymysql"]
 
 [[package]]
 category = "main"
+description = "Pretty-print tabular data"
+name = "tabulate"
+optional = false
+python-versions = "*"
+version = "0.8.5"
+
+[package.extras]
+widechars = ["wcwidth"]
+
+[[package]]
+category = "main"
 description = "Python Library for Tom's Obvious, Minimal Language"
 name = "toml"
 optional = false
@@ -373,7 +384,7 @@ python-versions = "*"
 version = "0.28.0"
 
 [metadata]
-content-hash = "e806cdf2441446613f9b8a8d2f9f639db69f014359fb26937e9d8dd0a866f6a8"
+content-hash = "265aefa712e4839c5000f6ac1d5ee0b6ee1fab4de1e5689652ea77d434afd5d7"
 python-versions = "^3.7"
 
 [metadata.hashes]
@@ -403,6 +414,7 @@ python-dotenv = ["debd928b49dbc2bf68040566f55cdb3252458036464806f4094487244e2a40
 requests = ["11e007a8a2aa0323f5a921e9e6a2d7e4e67d9877e85773fba9ba6419025cbeb4", "9cf5292fcd0f598c671cfc1e0d7d1a7f13bb8085e9a590f48c010551dc6c4b31"]
 six = ["3350809f0555b11f552448330d0b52d5f24c91a322ea4a15ef22629740f3761c", "d16a0141ec1a18405cd4ce8b4613101da75da0e9a7aec5bdd4fa804d0e0eba73"]
 sqlalchemy = ["272a835758908412e75e87f75dd0179a51422715c125ce42109632910526b1fd"]
+tabulate = ["d0097023658d4dea848d6ae73af84532d1e86617ac0925d1adf1dd903985dac3"]
 toml = ["229f81c57791a41d65e399fc06bf0848bab550a9dfd5ed66df18ce5f05e73d5c", "235682dd292d5899d361a811df37e04a8828a5b1da3115886b73cf81ebc9100e", "f1db651f9657708513243e61e6cc67d101a39bad662eaa9b5546f789338e07a3"]
 traitlets = ["70b4c6a1d9019d7b4f6846832288f86998aa3b9207c6821f3578a6a6a467fe44", "d023ee369ddd2763310e4c3eae1ff649689440d4ae59d7485eb4cfbbe3e359f7"]
 urllib3 = ["3de946ffbed6e6746608990594d08faac602528ac7015ac28d33cee6a45b7398", "9a107b99a5393caf59c7aa3c1249c16e6879447533d0887f4336dde834c7be86"]
